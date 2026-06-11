@@ -1,12 +1,37 @@
-import { createFileParser, createMarkdownParser } from "./processors/parse"
-import { WorkerSerializableBuildCtx } from "./util/ctx"
+import sourceMapSupport from "source-map-support"
+sourceMapSupport.install(options)
+import cfg from "../quartz"
+import { BuildCtx, WorkerSerializableBuildCtx } from "./util/ctx"
+import { FilePath } from "./util/path"
+import {
+  createFileParser,
+  createHtmlProcessor,
+  createMarkdownParser,
+  createMdProcessor,
+} from "./processors/parse"
+import { options } from "./util/sourcemap"
+import { MarkdownContent, ProcessedContent } from "./plugins/vfile"
 
-export async function parseMarkdown(ctx: WorkerSerializableBuildCtx, fps: string[]) {
-  const parser = createFileParser(ctx, fps)
-  return parser()
+// only called from worker thread
+export async function parseMarkdown(
+  partialCtx: WorkerSerializableBuildCtx,
+  fps: FilePath[],
+): Promise<MarkdownContent[]> {
+  const ctx: BuildCtx = {
+    ...partialCtx,
+    cfg,
+  }
+  return await createFileParser(ctx, fps)(createMdProcessor(ctx))
 }
 
-export async function processHtml(ctx: WorkerSerializableBuildCtx, fps: string[]) {
-  const parser = createMarkdownParser(ctx, fps)
-  return parser()
+// only called from worker thread
+export function processHtml(
+  partialCtx: WorkerSerializableBuildCtx,
+  mds: MarkdownContent[],
+): Promise<ProcessedContent[]> {
+  const ctx: BuildCtx = {
+    ...partialCtx,
+    cfg,
+  }
+  return createMarkdownParser(ctx, mds)(createHtmlProcessor(ctx))
 }
